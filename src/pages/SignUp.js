@@ -1,31 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../utils/auth';
-import { supabase } from '../utils/supabase';
+import { signUp } from '../utils/auth';
 
-const Login = () => {
-  // Deklarasi state di sini (ini yang hilang!)
+const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('siswa'); // Tambahkan ini jika belum ada
+  const [role, setRole] = useState('siswa'); // Default siswa
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const user = await login(email, password);
-      // Ambil role dari tabel users
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
-      navigate(userData.role === 'guru' ? '/dashboard-guru' : '/dashboard-siswa');
+      await signUp(email, password, role);
+      alert('Sign up berhasil! Silakan login.');
+      navigate('/'); // Redirect ke login
     } catch (error) {
-      alert('Login gagal: ' + error.message);
+      alert('Sign up gagal: ' + error.message);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-80">
-        <h2 className="text-2xl mb-4">Login LMS</h2>
+        <h2 className="text-2xl mb-4">Sign Up LMS</h2>
         <input
           type="email"
           placeholder="Email"
@@ -43,19 +40,22 @@ const Login = () => {
           required
         />
         <select
-          value={role}  // Baris 46: role digunakan di sini
-          onChange={(e) => setRole(e.target.value)}  // Baris 47: setRole digunakan di sini
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
           className="w-full p-2 mb-4 border rounded"
         >
           <option value="siswa">Siswa</option>
           <option value="guru">Guru</option>
         </select>
         <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
-          Login
+          Sign Up
         </button>
+        <p className="mt-4 text-center">
+          Sudah punya akun? <a href="/" className="text-blue-500">Login</a>
+        </p>
       </form>
     </div>
   );
 };
 
-export default Login;
+export default SignUp;

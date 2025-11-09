@@ -1,13 +1,31 @@
-// Simulasi autentikasi tanpa backend
-const users = [
-  { email: 'guru@example.com', password: '123', role: 'guru' },
-  { email: 'siswa@example.com', password: '123', role: 'siswa' },
-];
+     import { supabase } from './supabase';
 
-export const login = (email, password, role) => {
-  return users.some(user => user.email === email && user.password === password && user.role === role);
-};
+     export const login = async (email, password) => {
+       const { data, error } = await supabase.auth.signInWithPassword({
+         email,
+         password,
+       });
+       if (error) throw error;
+       return data.user;
+     };
 
-export const logout = () => {
-  // Hapus session jika ada
-};
+     export const logout = async () => {
+       const { error } = await supabase.auth.signOut();
+       if (error) throw error;
+     };
+
+     export const getCurrentUser = () => {
+       return supabase.auth.getUser();
+     };
+
+     export const signUp = async (email, password, role) => {
+       const { data, error } = await supabase.auth.signUp({
+         email,
+         password,
+       });
+       if (error) throw error;
+       // Setelah sign up, insert ke tabel users
+       await supabase.from('users').insert([{ id: data.user.id, email, role }]);
+       return data.user;
+     };
+     
