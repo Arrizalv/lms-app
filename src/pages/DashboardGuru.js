@@ -1,33 +1,44 @@
-     import React, { useState, useEffect } from 'react';
-     import { supabase } from '../utils/supabase';
-     import Navbar from '../components/Navbar';
-     import Sidebar from '../components/Sidebar';
+    import React, { useState, useEffect } from 'react';
+    import Navbar from '../components/Navbar';
+    import Sidebar from '../components/Sidebar';
 
      const DashboardGuru = () => {
        const [courses, setCourses] = useState([]);
        const [newCourse, setNewCourse] = useState({ title: '', description: '' });
 
        useEffect(() => {
-         fetchCourses();
+        fetchCourses();
        }, []);
 
        const fetchCourses = async () => {
-         const { data, error } = await supabase.from('courses').select('*');
-         if (error) console.error(error);
-         else setCourses(data);
+        try {
+          const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/courses`);
+          const data = await res.json();
+          setCourses(data);
+        } catch (err) {
+          console.error(err);
+        }
        };
 
        const addCourse = async () => {
-         const { data: user } = await supabase.auth.getUser();
-         const { error } = await supabase.from('courses').insert([{
-           title: newCourse.title,
-           description: newCourse.description,
-           teacher_id: user.user.id,
-         }]);
-         if (!error) {
-           setNewCourse({ title: '', description: '' });
-           fetchCourses();
-         }
+        try {
+          // get logged-in user id from localStorage if stored by login
+          const stored = localStorage.getItem('user');
+          let teacher_id = null;
+          if (stored) {
+            try { teacher_id = JSON.parse(stored).id; } catch (e) {}
+          }
+          const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/courses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: newCourse.title, description: newCourse.description, teacher_id }),
+          });
+          if (!res.ok) throw new Error('Failed to add course');
+          setNewCourse({ title: '', description: '' });
+          fetchCourses();
+        } catch (err) {
+          console.error(err);
+        }
        };
 
        return (

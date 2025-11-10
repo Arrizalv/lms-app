@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
@@ -12,19 +11,26 @@ const DashboardSiswa = () => {
   }, []);
 
   const fetchEnrolledCourses = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    // Ambil kursus yang di-enroll siswa
-    const { data, error } = await supabase
-      .from('enrollments')
-      .select('courses(*)')
-      .eq('student_id', user.user.id);
-    if (error) console.error(error);
-    else setCourses(data.map(e => e.courses));
+    try {
+      const stored = localStorage.getItem('user');
+      let student_id = null;
+      if (stored) {
+        try { student_id = JSON.parse(stored).id; } catch (e) {}
+      }
+      if (!student_id) return;
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/enrollments?student_id=${student_id}`);
+      const enrolled = await res.json();
+      setCourses(enrolled || []);
 
-    // Ambil tugas dari kursus tersebut
-    const courseIds = data.map(e => e.courses.id);
-    const { data: taskData } = await supabase.from('tasks').select('*').in('course_id', courseIds);
-    setTasks(taskData);
+      const ids = (enrolled || []).map(c => c.id).join(',');
+      if (ids) {
+        const tRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/tasks?course_ids=${ids}`);
+        const taskData = await tRes.json();
+        setTasks(taskData || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

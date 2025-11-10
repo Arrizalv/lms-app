@@ -1,31 +1,45 @@
-     import { supabase } from './supabase';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
-     export const login = async (email, password) => {
-       const { data, error } = await supabase.auth.signInWithPassword({
-         email,
-         password,
-       });
-       if (error) throw error;
-       return data.user;
-     };
+export const login = async (email, password) => {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Login failed');
+  // Save token to localStorage for later requests (optional)
+  if (data.token) localStorage.setItem('token', data.token);
+  // persist basic user info for the frontend
+  try { localStorage.setItem('user', JSON.stringify({ id: data.id, email: data.email, role: data.role })); } catch (e) {}
+  return data; // { id, email, role, token }
+};
 
-     export const logout = async () => {
-       const { error } = await supabase.auth.signOut();
-       if (error) throw error;
-     };
+export const logout = async () => {
+  localStorage.removeItem('token');
+};
 
-     export const getCurrentUser = () => {
-       return supabase.auth.getUser();
-     };
+export const getCurrentUser = () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    // We don't decode here; callers should use stored user data returned from login/signup
+    return { token };
+  } catch (e) {
+    return null;
+  }
+};
 
-     export const signUp = async (email, password, role) => {
-       const { data, error } = await supabase.auth.signUp({
-         email,
-         password,
-       });
-       if (error) throw error;
-       // Setelah sign up, insert ke tabel users
-       await supabase.from('users').insert([{ id: data.user.id, email, role }]);
-       return data.user;
-     };
+export const signUp = async (email, password, role = 'siswa') => {
+  const res = await fetch(`${API_BASE}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, role }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Sign up failed');
+  if (data.token) localStorage.setItem('token', data.token);
+  try { localStorage.setItem('user', JSON.stringify({ id: data.id, email: data.email, role: data.role })); } catch (e) {}
+  return data; // { id, email, role, token }
+};
      

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../utils/auth';
-import { supabase } from '../utils/supabase';
 
 const Login = () => {
   // Deklarasi state di sini (ini yang hilang!)
@@ -14,9 +13,8 @@ const Login = () => {
     e.preventDefault();
     try {
       const user = await login(email, password);
-      // Ambil role dari tabel users
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
-      navigate(userData.role === 'guru' ? '/dashboard-guru' : '/dashboard-siswa');
+      // backend returns role
+      navigate(user.role === 'guru' ? '/dashboard-guru' : '/dashboard-siswa');
     } catch (error) {
       alert('Login gagal: ' + error.message);
     }

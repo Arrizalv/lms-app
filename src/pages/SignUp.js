@@ -11,9 +11,10 @@ const SignUp = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await signUp(email, password, role);
+  await signUp(email, password, role);
       alert('Sign up berhasil! Silakan login.');
-      navigate('/'); // Redirect ke login
+      // Optionally navigate based on role
+      navigate('/');
     } catch (error) {
       alert('Sign up gagal: ' + error.message);
     }
