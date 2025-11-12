@@ -1,17 +1,23 @@
-     import { logout } from '../utils/auth';
+import React from "react";
+import { logout, getCurrentUser } from "../utils/auth";
 
-     const Navbar = () => {
-       const handleLogout = async () => {
-         await logout();
-         window.location.href = '/'; // Redirect ke login
-       };
+function Navbar() {
+  const user = getCurrentUser();
 
-       return (
-         <nav className="bg-blue-600 text-white p-4">
-           <h1 className="text-lg">LMS App</h1>
-           <button onClick={handleLogout} className="float-right">Logout</button>
-         </nav>
-       );
-     };
-     
+  return (
+    <nav className="flex justify-between p-4 bg-blue-600 text-white">
+      <h1 className="text-lg font-bold">LMS Dashboard</h1>
+      <div className="flex items-center gap-4">
+        {user && <span>Halo, {user.name}</span>}
+        <button
+          onClick={logout}
+          className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 export default Navbar;

@@ -10,11 +10,17 @@ app.use(express.json());
 const authRoute = require('./routes/auth');
 const coursesRoute = require('./routes/courses');
 const dataRoute = require('./routes/data');
+const materialsRoute = require('./routes/materials');
+const assignmentsRoute = require('./routes/assignments');
+
+
 
 // Gunakan route
 app.use('/api/auth', authRoute);
 app.use('/api/courses', coursesRoute);
 app.use('/api/data', dataRoute);
+app.use('/api/materials', materialsRoute);
+app.use('/api/assignments', assignmentsRoute);
 
 // Server
 const PORT = process.env.PORT || 4000;

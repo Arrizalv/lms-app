@@ -1,61 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-const DashboardSiswa = () => {
-  const [courses, setCourses] = useState([]);
-  const [tasks, setTasks] = useState([]);
+export default function DashboardSiswa() {
+  const [materials, setMaterials] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [submission, setSubmission] = useState({ assignment_id: "", file_url: "" });
+  const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
-    fetchEnrolledCourses();
+    fetchData();
   }, []);
 
-  const fetchEnrolledCourses = async () => {
-    try {
-      const stored = localStorage.getItem('user');
-      let student_id = null;
-      if (stored) {
-        try { student_id = JSON.parse(stored).id; } catch (e) {}
-      }
-      if (!student_id) return;
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/enrollments?student_id=${student_id}`);
-      const enrolled = await res.json();
-      setCourses(enrolled || []);
+  const fetchData = async () => {
+    const mats = await axios.get("/api/materials");
+    const tasks = await axios.get("/api/assignments");
+    setMaterials(mats.data);
+    setAssignments(tasks.data);
+  };
 
-      const ids = (enrolled || []).map(c => c.id).join(',');
-      if (ids) {
-        const tRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/tasks?course_ids=${ids}`);
-        const taskData = await tRes.json();
-        setTasks(taskData || []);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const submitTask = async () => {
+    await axios.post("/api/assignments/submit", {
+      ...submission,
+      student_id: user.id,
+    });
+    alert("Tugas berhasil dikumpulkan!");
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1">
-        <Navbar />
-        <div className="p-6">
-          <h1 className="text-3xl mb-4">Dashboard Siswa</h1>
-          <h2 className="text-xl mb-2">Kursus Saya</h2>
-          <ul className="list-disc pl-5 mb-4">
-            {courses.map((course) => (
-              <li key={course.id}>{course.title}</li>
-            ))}
-          </ul>
-          <h2 className="text-xl mb-2">Tugas</h2>
-          <ul className="list-disc pl-5">
-            {tasks.map((task) => (
-              <li key={task.id}>{task.title} - Due: {task.due_date}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
+    <div className="p-6 space-y-8">
+      <h1 className="text-2xl font-bold">Dashboard Siswa</h1>
+
+      {/* Materi */}
+      <section>
+        <h2 className="font-semibold mb-2">Materi Terbaru</h2>
+        <ul>
+          {materials.map(m => (
+            <li key={m.material_id}>
+              <a href={m.file_url} target="_blank" rel="noreferrer" className="text-blue-500">
+                {m.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Tugas */}
+      <section>
+        <h2 className="font-semibold mb-2">Tugas Aktif</h2>
+        <select onChange={e => setSubmission({ ...submission, assignment_id: e.target.value })}>
+          <option>Pilih tugas...</option>
+          {assignments.map(a => (
+            <option key={a.assignment_id} value={a.assignment_id}>{a.title}</option>
+          ))}
+        </select>
+        <input placeholder="Link file (Google Drive, dll)" className="border p-2" onChange={e => setSubmission({ ...submission, file_url: e.target.value })} />
+        <button className="bg-blue-600 text-white p-2 rounded" onClick={submitTask}>Kumpulkan</button>
+      </section>
     </div>
   );
-};
-
-export default DashboardSiswa;
+}

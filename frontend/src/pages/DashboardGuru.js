@@ -1,80 +1,73 @@
-    import React, { useState, useEffect } from 'react';
-    import Navbar from '../components/Navbar';
-    import Sidebar from '../components/Sidebar';
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-     const DashboardGuru = () => {
-       const [courses, setCourses] = useState([]);
-       const [newCourse, setNewCourse] = useState({ title: '', description: '' });
+export default function DashboardGuru() {
+  const [materials, setMaterials] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [newMaterial, setNewMaterial] = useState({ title: "", description: "", file_url: "" });
+  const [newAssignment, setNewAssignment] = useState({ title: "", description: "", deadline: "" });
+  const user = JSON.parse(localStorage.getItem("user"));
 
-       useEffect(() => {
-        fetchCourses();
-       }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-       const fetchCourses = async () => {
-        try {
-          const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/courses`);
-          const data = await res.json();
-          setCourses(data);
-        } catch (err) {
-          console.error(err);
-        }
-       };
+  const fetchData = async () => {
+    const mats = await axios.get("/api/materials");
+    const tasks = await axios.get("/api/assignments");
+    setMaterials(mats.data);
+    setAssignments(tasks.data);
+  };
 
-       const addCourse = async () => {
-        try {
-          // get logged-in user id from localStorage if stored by login
-          const stored = localStorage.getItem('user');
-          let teacher_id = null;
-          if (stored) {
-            try { teacher_id = JSON.parse(stored).id; } catch (e) {}
-          }
-          const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}/api/courses`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: newCourse.title, description: newCourse.description, teacher_id }),
-          });
-          if (!res.ok) throw new Error('Failed to add course');
-          setNewCourse({ title: '', description: '' });
-          fetchCourses();
-        } catch (err) {
-          console.error(err);
-        }
-       };
+  const addMaterial = async () => {
+    await axios.post("/api/materials", {
+      ...newMaterial,
+      teacher_id: user.id,
+    });
+    fetchData();
+  };
 
-       return (
-         <div className="flex">
-           <Sidebar />
-           <div className="flex-1">
-             <Navbar />
-             <div className="p-6">
-               <h1 className="text-3xl mb-4">Dashboard Guru</h1>
-               <div className="mb-4">
-                 <input
-                   type="text"
-                   placeholder="Judul Kursus"
-                   value={newCourse.title}
-                   onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
-                   className="p-2 border rounded mr-2"
-                 />
-                 <input
-                   type="text"
-                   placeholder="Deskripsi"
-                   value={newCourse.description}
-                   onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
-                   className="p-2 border rounded mr-2"
-                 />
-                 <button onClick={addCourse} className="bg-green-500 text-white p-2 rounded">Tambah Kursus</button>
-               </div>
-               <ul className="list-disc pl-5">
-                 {courses.map((course) => (
-                   <li key={course.id} className="mb-2">{course.title}: {course.description}</li>
-                 ))}
-               </ul>
-             </div>
-           </div>
-         </div>
-       );
-     };
+  const addAssignment = async () => {
+    await axios.post("/api/assignments", {
+      ...newAssignment,
+      teacher_id: user.id,
+    });
+    fetchData();
+  };
 
-     export default DashboardGuru;
-     
+  return (
+    <div className="p-6 space-y-8">
+      <h1 className="text-2xl font-bold">Dashboard Guru</h1>
+
+      {/* Upload Materi */}
+      <section>
+        <h2 className="font-semibold mb-2">Tambah Materi</h2>
+        <input placeholder="Judul" className="border p-2" onChange={e => setNewMaterial({ ...newMaterial, title: e.target.value })} />
+        <input placeholder="Deskripsi" className="border p-2" onChange={e => setNewMaterial({ ...newMaterial, description: e.target.value })} />
+        <input placeholder="URL File" className="border p-2" onChange={e => setNewMaterial({ ...newMaterial, file_url: e.target.value })} />
+        <button className="bg-blue-600 text-white p-2 rounded" onClick={addMaterial}>Upload</button>
+
+        <ul>
+          {materials.map(m => (
+            <li key={m.material_id}>{m.title}</li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Buat Tugas */}
+      <section>
+        <h2 className="font-semibold mb-2">Buat Tugas</h2>
+        <input placeholder="Judul" className="border p-2" onChange={e => setNewAssignment({ ...newAssignment, title: e.target.value })} />
+        <input placeholder="Deskripsi" className="border p-2" onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })} />
+        <input type="datetime-local" className="border p-2" onChange={e => setNewAssignment({ ...newAssignment, deadline: e.target.value })} />
+        <button className="bg-green-600 text-white p-2 rounded" onClick={addAssignment}>Tambah</button>
+
+        <ul>
+          {assignments.map(a => (
+            <li key={a.assignment_id}>{a.title}</li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
