@@ -1,62 +1,41 @@
-const express = require('express');
-const pool = require('../db');
+// backend/routes/data.js
+const express = require("express");
 const router = express.Router();
+const db = require("../config/db");
 
-// Ensure enrollments and tasks tables
-async function ensureTables() {
-  const createEnroll = `
-    CREATE TABLE IF NOT EXISTS enrollments (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      student_id INT NOT NULL,
-      course_id INT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB;
-  `;
-  const createTasks = `
-    CREATE TABLE IF NOT EXISTS tasks (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      course_id INT NOT NULL,
-      title VARCHAR(255) NOT NULL,
-      description TEXT,
-      due_date DATE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB;
-  `;
-  await pool.query(createEnroll);
-  await pool.query(createTasks);
-}
+// =======================
+// Route: GET /api/data/overview
+// =======================
+router.get("/overview", (req, res) => {
+  const stats = {};
 
-// GET /api/enrollments?student_id=123 -> returns courses joined
-router.get('/enrollments', async (req, res) => {
-  try {
-    await ensureTables();
-    const studentId = req.query.student_id;
-    if (!studentId) return res.status(400).json({ error: 'student_id required' });
-    const [rows] = await pool.query(
-      `SELECT c.* FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = ?`,
-      [studentId]
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+  // Hitung jumlah guru
+  db.query("SELECT COUNT(*) AS total FROM teachers", (err, teacherResult) => {
+    if (err) return res.status(500).json({ message: "Error mengambil data guru", error: err });
+    stats.totalTeachers = teacherResult[0].total;
 
-// GET /api/tasks?course_ids=1,2,3
-router.get('/tasks', async (req, res) => {
-  try {
-    await ensureTables();
-    const courseIds = req.query.course_ids;
-    if (!courseIds) return res.status(400).json({ error: 'course_ids required' });
-    const ids = courseIds.split(',').map((s) => Number(s)).filter(Boolean);
-    if (ids.length === 0) return res.json([]);
-    const [rows] = await pool.query(`SELECT * FROM tasks WHERE course_id IN (${ids.map(() => '?').join(',')})`, ids);
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+    // Hitung jumlah siswa
+    db.query("SELECT COUNT(*) AS total FROM students", (err2, studentResult) => {
+      if (err2) return res.status(500).json({ message: "Error mengambil data siswa", error: err2 });
+      stats.totalStudents = studentResult[0].total;
+
+      // Hitung jumlah course (opsional, kalau tabelnya belum ada bisa dilewati dulu)
+      db.query("SELECT COUNT(*) AS total FROM courses", (err3, courseResult) => {
+        if (err3) {
+          // Jika tabel courses belum ada, kirim 0
+          stats.totalCourses = 0;
+        } else {
+          stats.totalCourses = courseResult[0].total;
+        }
+
+        // Kirim hasil
+        res.json({
+          message: "Overview data fetched successfully!",
+          data: stats,
+        });
+      });
+    });
+  });
 });
 
 module.exports = router;

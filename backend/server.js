@@ -2,24 +2,22 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const authRoutes = require('./routes/auth');
-const coursesRoutes = require('./routes/courses');
-const dataRoutes = require('./routes/data');
-
 const app = express();
-const PORT = process.env.PORT || 4000;
-
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
-app.use('/api/courses', coursesRoutes);
-app.use('/api', dataRoutes);
+// Import routes
+const authRoute = require('./routes/auth');
+const coursesRoute = require('./routes/courses');
+const dataRoute = require('./routes/data');
 
-app.get('/', (req, res) => {
-  res.json({ ok: true, message: 'LMS backend running' });
-});
+// Gunakan route
+app.use('/api/auth', authRoute);
+app.use('/api/courses', coursesRoute);
+app.use('/api/data', dataRoute);
 
+// Server
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`LMS backend listening on port ${PORT}`);
+  console.log(`🚀 LMS backend listening on http://localhost:${PORT}`);
 });

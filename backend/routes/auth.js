@@ -1,59 +1,101 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const pool = require('../db');
+const express = require("express");
 const router = express.Router();
+const db = require("../db");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-
-// Helper to create users table if not exists (simple)
-async function ensureTables() {
-  const createUsers = `
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL,
-      role VARCHAR(50) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB;
-  `;
-  await pool.query(createUsers);
-}
-
-// Signup
-router.post('/signup', async (req, res) => {
+// -----------------------------
+// REGISTER (untuk guru & siswa)
+// -----------------------------
+router.post("/signup", async (req, res) => {
   try {
-    await ensureTables();
-    const { email, password, role } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    const hashed = await bcrypt.hash(password, 10);
-    const [result] = await pool.query('INSERT INTO users (email, password, role) VALUES (?, ?, ?)', [email, hashed, role || 'siswa']);
-    const userId = result.insertId;
-    const token = jwt.sign({ id: userId, email, role: role || 'siswa' }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ id: userId, email, role: role || 'siswa', token });
-  } catch (err) {
-    if (err && err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Email already exists' });
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    const { role, name, email, password } = req.body;
+
+    if (!role || !name || !email || !password) {
+      return res.status(400).json({ message: "Semua field harus diisi!" });
+    }
+
+    // Cek role valid atau tidak
+    if (role !== "teacher" && role !== "student") {
+      return res.status(400).json({ message: "Role harus teacher atau student" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Tentukan tabel berdasarkan role
+    const table = role === "teacher" ? "teachers" : "students";
+
+    // Cek apakah email sudah terdaftar
+    db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, result) => {
+      if (err) return res.status(500).json(err);
+      if (result.length > 0) {
+        return res.status(400).json({ message: "Email sudah terdaftar!" });
+      }
+
+      // Masukkan ke database
+      db.query(
+        `INSERT INTO ${table} (name, email, password) VALUES (?, ?, ?)`,
+        [name, email, hashedPassword],
+        (err2, result2) => {
+          if (err2) return res.status(500).json(err2);
+          return res.status(201).json({ message: `${role} berhasil terdaftar!` });
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Terjadi kesalahan server", error });
   }
 });
 
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    const [rows] = await pool.query('SELECT id, email, password, role FROM users WHERE email = ?', [email]);
-    const user = rows[0];
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ id: user.id, email: user.email, role: user.role, token });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+// -----------------------------
+// LOGIN (untuk guru & siswa)
+// -----------------------------
+router.post("/login", (req, res) => {
+  const { role, email, password } = req.body;
+
+  if (!role || !email || !password) {
+    return res.status(400).json({ message: "Semua field harus diisi!" });
   }
+
+  if (role !== "teacher" && role !== "student") {
+    return res.status(400).json({ message: "Role tidak valid!" });
+  }
+
+  const table = role === "teacher" ? "teachers" : "students";
+
+  db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], async (err, result) => {
+    if (err) return res.status(500).json(err);
+    if (result.length === 0) {
+      return res.status(400).json({ message: "Email tidak ditemukan!" });
+    }
+
+    const user = result[0];
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Password salah!" });
+    }
+
+    // Buat JWT token
+    const token = jwt.sign(
+      { id: user.id || user.teacher_id || user.student_id, role },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    res.json({
+      message: "Login berhasil!",
+      token,
+      user: {
+        id: user.id || user.teacher_id || user.student_id,
+        name: user.name,
+        email: user.email,
+        role,
+      },
+    });
+  });
 });
 
 module.exports = router;
